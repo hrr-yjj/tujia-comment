@@ -1,0 +1,90 @@
+import random
+import time
+
+import requests
+
+
+def spider():
+    headers = {
+        'Host': 'mpclient.tujia.com',
+        'Connection': 'keep-alive',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36 MicroMessenger/7.0.9.501 NetType/WIFI MiniProgramEnv/Windows WindowsWechat',
+        'content-type': 'application/json',
+        'mpVersion': '5',
+        'userId': '',
+        'userToken': '',
+        'wrapperId': 'waptujia005',
+        'Referer': 'https://servicewechat.com/wx5df0be7c6bb02397/240/page-frame.html',
+        'Accept-Encoding': 'gzip, deflate, br',
+    }
+    for page in range(100000):
+        print(f'get_unit_id  page: {page}')
+        time.sleep(random.uniform(1, 3))
+        data = {'conditions': [
+            {'label': '好评优先', 'type': 4, 'value': '5', 'hotRecommend': False, 'longitude': 0, 'latitude': 0,
+             'conditionType': -1, 'redPoint': False, 'selectedType': 0, 'scope': 0, 'gType': 4, 'selected': False},
+            {'label': '西安', 'type': 1, 'value': 17, 'hotRecommend': False, 'pingYin': None,
+             'longitude': 108.94599914550781, 'latitude': 34.3473014831543, 'conditionType': -1, 'redPoint': False,
+             'selectedType': 0, 'scope': 0, 'pinYin': 'xian', 'gType': 0, 'expressBooking': False, 'font': None,
+             'isLandmark': False, 'isNew': False, 'isSelected': False, 'labelDesc': None, 'percentageUser': None,
+             'sentValue': None},
+            {'label': '离店日期', 'type': 3, 'value': '2020-09-16', 'hotRecommend': False, 'longitude': 0, 'latitude': 0,
+             'conditionType': -1, 'redPoint': False, 'selectedType': 0, 'scope': 0, 'gType': 0, 'expressBooking': False,
+             'font': None, 'isLandmark': False, 'isNew': False, 'isSelected': False, 'labelDesc': None,
+             'percentageUser': None, 'pingYin': None, 'sentValue': None},
+            {'label': '入住日期', 'type': 2, 'value': '2020-09-15', 'hotRecommend': False, 'longitude': 0, 'latitude': 0,
+             'conditionType': -1, 'redPoint': False, 'selectedType': 0, 'scope': 0, 'gType': 0, 'expressBooking': False,
+             'font': None, 'isLandmark': False, 'isNew': False, 'isSelected': False, 'labelDesc': None,
+             'percentageUser': None, 'pingYin': None, 'sentValue': None}], 'noStop': False,
+            'onlyReturnTotalCount': False, 'pageIndex': page, 'pageSize': 30, 'returnFilterConditions': True,
+            'returnGeoConditions': True, 'returnNavigations': True, 'url': ''}
+        response = requests.post('https://mpclient.tujia.com/mpsearch/searchhouse', headers=headers, json=data)
+        data_list = response.json()['data']['items']
+        for data in data_list:
+            unit_id = data['unitId']
+            if unit_id not in unit_id_list:
+                unit_id_list.append(unit_id)
+                get_comment(unit_id)
+        if len(comment_list) >= 100000:
+            break
+
+
+def get_comment(unit_id):
+    headers = {
+        'Host': 'mpclient.tujia.com',
+        'Connection': 'keep-alive',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36 MicroMessenger/7.0.9.501 NetType/WIFI MiniProgramEnv/Windows WindowsWechat',
+        'content-type': 'application/json',
+        'mpVersion': '5',
+        'userId': '',
+        'userToken': '',
+        'Referer': 'https://servicewechat.com/wx5df0be7c6bb02397/240/page-frame.html',
+        'Accept-Encoding': 'gzip, deflate, br',
+    }
+    for page in range(100000):
+        print(f'get_comment  unit_id: {unit_id}, page: {page}')
+        time.sleep(random.uniform(1, 3))
+        data = {"pageIndex": page, "pageSize": 300, "tagParameter": "", "unitId": str(unit_id)}
+        response = requests.post('https://mpclient.tujia.com/mpcomment/searchunitcommentsnew', headers=headers,
+                                 json=data)
+        data_list = response.json()['data']
+        if not data_list:
+            break
+        for data in data_list:
+            comment = data['commentDetail']
+            if comment is None:
+                continue
+            comment = comment.replace('\n', '').strip()
+            if comment not in comment_list:
+                comment_list.append(comment)
+                print(comment)
+                result_txt.write(comment + '\n')
+                result_txt.flush()
+
+
+if __name__ == '__main__':
+    now_time = time.strftime('%Y%m%d%H%M%S')
+    result_txt = open(f'{now_time}.txt', 'w', encoding='utf-8')
+    unit_id_list = []
+    comment_list = []
+    spider()
